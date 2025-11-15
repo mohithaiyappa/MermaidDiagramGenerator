@@ -18,9 +18,9 @@ python mermaid_diagram_generator.py --input-path /path/to/mobile/project \
 
 ### Options
 - `--input-path` (required): Root path to analyze.
-- `--output-json`: Destination for the generated summary (default: `diagram_data.json`).
+- `--output-json`: Destination for the generated summary (default: `diagram_data.json`). Parent directories are created automatically if they don't exist.
 - `--output-format`: Choose `json` (default) or `yaml` for the summary output.
-- `--output-prompt`: Destination for the generated prompt guidance (default: `diagram_prompt.txt`).
+- `--output-prompt`: Destination for the generated prompt guidance (default: `diagram_prompt.txt`). Parent directories are created automatically if they don't exist.
 - `--exclude`: Additional glob pattern(s) to skip (can be provided multiple times).
 - `--verbose`: Enable debug logging for deeper insight during execution.
 
