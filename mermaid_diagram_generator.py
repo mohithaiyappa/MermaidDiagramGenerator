@@ -84,8 +84,8 @@ def configure_logging(verbose: bool) -> None:
 def parse_arguments(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Analyze Kotlin and Swift projects to generate JSON summaries and prompts "
-            "for Mermaid diagram creation."
+            "Analyze Kotlin and Swift projects to generate JSON or YAML summaries and "
+            "prompts for Mermaid diagram creation."
         )
     )
     parser.add_argument(
@@ -96,7 +96,13 @@ def parse_arguments(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-json",
         default="diagram_data.json",
-        help="Destination file for the generated JSON summary.",
+        help="Destination file for the generated summary data.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=("json", "yaml"),
+        default="json",
+        help="Format of the generated summary data (default: json).",
     )
     parser.add_argument(
         "--output-prompt",
@@ -417,29 +423,73 @@ class ProjectAnalyzer:
         }
 
 
-def write_json(path: str, data: Dict[str, object]) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    LOGGER.info("JSON summary written to %s", path)
+def _format_scalar(value: object) -> str:
+    if isinstance(value, str):
+        return json.dumps(value)
+    if isinstance(value, bool) or value is None:
+        return json.dumps(value)
+    return str(value)
 
 
-def write_prompt(path: str, data: Dict[str, object]) -> None:
+def _yaml_lines(data: object, indent: int = 0) -> List[str]:
+    indent_str = "  " * indent
+    if isinstance(data, dict):
+        if not data:
+            return [f"{indent_str}{{}}"]
+        lines: List[str] = []
+        for key, value in data.items():
+            if isinstance(value, (dict, list)):
+                lines.append(f"{indent_str}{key}:")
+                lines.extend(_yaml_lines(value, indent + 1))
+            else:
+                lines.append(f"{indent_str}{key}: {_format_scalar(value)}")
+        return lines
+    if isinstance(data, list):
+        if not data:
+            return [f"{indent_str}[]"]
+        lines = []
+        for value in data:
+            if isinstance(value, (dict, list)):
+                lines.append(f"{indent_str}-")
+                lines.extend(_yaml_lines(value, indent + 1))
+            else:
+                lines.append(f"{indent_str}- {_format_scalar(value)}")
+        return lines
+    return [f"{indent_str}{_format_scalar(data)}"]
+
+
+def write_summary(path: str, data: Dict[str, object], fmt: str) -> None:
+    if fmt == "json":
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        LOGGER.info("JSON summary written to %s", path)
+    elif fmt == "yaml":
+        lines = _yaml_lines(data)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        LOGGER.info("YAML summary written to %s", path)
+    else:
+        raise ValueError(f"Unsupported format: {fmt}")
+
+
+def write_prompt(path: str, data: Dict[str, object], summary_format: str) -> None:
     metadata = data.get("metadata", {})
     project_name = metadata.get("project_name", "Unknown Project")
     platforms = ", ".join(metadata.get("platforms", [])) or "unspecified"
+    summary_label = summary_format.upper()
     summary = (
         f"Mermaid Diagram Generator Output\n"
         f"Project: {project_name}\n"
         f"Analyzed Platforms: {platforms}\n"
         f"Timestamp: {metadata.get('timestamp', 'n/a')}\n\n"
         "Instructions for using this data with an LLM such as ChatGPT:\n"
-        "1. Provide the JSON summary to the model and request a Mermaid class diagram using the `class_diagram` section.\n"
+        f"1. Provide the {summary_label} summary to the model and request a Mermaid class diagram using the `class_diagram` section.\n"
         "2. Ask for a sequence diagram highlighting the interactions listed under `sequence_diagram.interactions`.\n"
         "3. Request a flowchart based on the decision and process nodes in `flowchart.nodes`.\n"
         "4. For large projects, focus on one module or package at a time using the `metadata.packages` information.\n"
         "5. Encourage the model to include notes about assumptions if the extracted data omits implementation specifics.\n\n"
         "Example prompt:\n"
-        "Using the attached JSON, generate a Mermaid class diagram summarizing the primary classes and their relationships."
+        f"Using the attached {summary_label} data, generate a Mermaid class diagram summarizing the primary classes and their relationships."
         " Then produce sequence and flowchart diagrams that align with the documented interactions and decision nodes."
     )
     with open(path, "w", encoding="utf-8") as f:
@@ -456,9 +506,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 1
     analyzer = ProjectAnalyzer(input_path, args.exclude)
     data = analyzer.analyze()
+    summary_format = args.output_format
     try:
-        write_json(os.path.abspath(args.output_json), data)
-        write_prompt(os.path.abspath(args.output_prompt), data)
+        write_summary(os.path.abspath(args.output_json), data, summary_format)
+        write_prompt(os.path.abspath(args.output_prompt), data, summary_format)
     except OSError as exc:
         LOGGER.error("Failed to write output files: %s", exc)
         return 1
