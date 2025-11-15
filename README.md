@@ -12,23 +12,27 @@ Run the script from the command line, pointing it at the root directory of the p
 
 ```bash
 python mermaid_diagram_generator.py --input-path /path/to/mobile/project \
-  --output-json diagram_data.json --output-prompt diagram_prompt.txt
+  --output-json diagram_data.json --output-prompt diagram_prompt.txt \
+  --output-format json
 ```
 
 ### Options
 - `--input-path` (required): Root path to analyze.
-- `--output-json`: Destination for the generated JSON summary (default: `diagram_data.json`).
+- `--output-json`: Destination for the generated summary (default: `diagram_data.json`).
+- `--output-format`: Choose `json` (default) or `yaml` for the summary output.
 - `--output-prompt`: Destination for the generated prompt guidance (default: `diagram_prompt.txt`).
 - `--exclude`: Additional glob pattern(s) to skip (can be provided multiple times).
 - `--verbose`: Enable debug logging for deeper insight during execution.
 
 ## Outputs
-- **JSON summary** – Contains project metadata, class and function details, inferred relationships, sequence interactions,
-  and flow-oriented nodes.
-- **Prompt text** – Ready-to-use instructions you can paste into an LLM (e.g., ChatGPT) together with the JSON to generate
+- **Summary data (JSON or YAML)** – Contains project metadata, class and function details, inferred relationships,
+  sequence interactions, and flow-oriented nodes.
+- **Prompt text** – Ready-to-use instructions you can paste into an LLM (e.g., ChatGPT) together with the summary data to generate
   Mermaid class, sequence, and flowchart diagrams.
 
 Both outputs are deterministic for the same input source tree, making them suitable for CI environments like Jenkins.
+
+To emit YAML instead of JSON, supply `--output-format yaml` and point `--output-json` at a `.yaml` (or `.yml`) file.
 
 ## Example run against a small Android project
 
@@ -40,6 +44,7 @@ python mermaid_diagram_generator.py \
   --input-path fixtures/android_sample \
   --output-json fixtures/android_sample/diagram.json \
   --output-prompt fixtures/android_sample/prompt.txt \
+  --output-format json \
   --verbose
 ```
 
@@ -52,6 +57,7 @@ python mermaid_diagram_generator.py \
   --input-path kotlin-android-template \
   --output-json kotlin_template.json \
   --output-prompt kotlin_template_prompt.txt \
+  --output-format json \
   --verbose
 ```
 
@@ -68,5 +74,6 @@ python mermaid_diagram_generator.py \
   --input-path fixtures/android_multi_module \
   --output-json fixtures/android_multi_module/diagram.json \
   --output-prompt fixtures/android_multi_module/prompt.txt \
+  --output-format json \
   --verbose
 ```
