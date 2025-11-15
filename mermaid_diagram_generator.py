@@ -458,7 +458,14 @@ def _yaml_lines(data: object, indent: int = 0) -> List[str]:
     return [f"{indent_str}{_format_scalar(data)}"]
 
 
+def _ensure_parent_dir(path: str) -> None:
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+
+
 def write_summary(path: str, data: Dict[str, object], fmt: str) -> None:
+    _ensure_parent_dir(path)
     if fmt == "json":
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -473,6 +480,7 @@ def write_summary(path: str, data: Dict[str, object], fmt: str) -> None:
 
 
 def write_prompt(path: str, data: Dict[str, object], summary_format: str) -> None:
+    _ensure_parent_dir(path)
     metadata = data.get("metadata", {})
     project_name = metadata.get("project_name", "Unknown Project")
     platforms = ", ".join(metadata.get("platforms", [])) or "unspecified"
